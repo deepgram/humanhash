@@ -49,3 +49,120 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: cargo publish
+
+  build-binaries:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+          - target: x86_64-apple-darwin
+            runner: macos-13
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Install aarch64 linux cross linker
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo 'CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc' >> "$GITHUB_ENV"
+      - name: Build release binary
+        shell: bash
+        run: cargo build --release --locked --bin humanhash --target ${{ matrix.target }}
+      - name: Package
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION='${{ needs.release-please.outputs.tag_name }}'
+          TARGET='${{ matrix.target }}'
+          STEM="humanhash-${VERSION}-${TARGET}"
+          STAGE="${RUNNER_TEMP}/${STEM}"
+          mkdir -p "$STAGE"
+          if [[ "$TARGET" == *windows* ]]; then
+            cp "target/${TARGET}/release/humanhash.exe" "$STAGE/"
+          else
+            cp "target/${TARGET}/release/humanhash" "$STAGE/"
+          fi
+          cp README.md LICENSE NOTICE "$STAGE/"
+          cd "$RUNNER_TEMP"
+          if [[ "$TARGET" == *windows* ]]; then
+            7z a "${STEM}.zip" "$STEM" >/dev/null
+            ASSET="${RUNNER_TEMP}/${STEM}.zip"
+          else
+            tar czf "${STEM}.tar.gz" "$STEM"
+            ASSET="${RUNNER_TEMP}/${STEM}.tar.gz"
+          fi
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+      - name: Upload to GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload \
+            '${{ needs.release-please.outputs.tag_name }}' \
+            '${{ steps.package.outputs.asset }}' \
+            --clobber
+
+  humanhash-tag:
+    needs: [release-please, build-binaries]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Compute humanhash of release commit
+        id: hh
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --release --quiet --bin humanhash
+          SHA="$(git rev-parse HEAD)"
+          TAG="$(./target/release/humanhash "$SHA")"
+          echo "Computed humanhash tag '$TAG' for commit $SHA"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - name: Push humanhash git tag
+        shell: bash
+        env:
+          TAG: ${{ steps.hh.outputs.tag }}
+          SHA: ${{ steps.hh.outputs.sha }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
+            echo "::warning::tag '${TAG}' already exists on origin; skipping push"
+            exit 0
+          fi
+          git tag -a "$TAG" -m "humanhash of ${SHA} (release ${RELEASE_TAG})" "$SHA"
+          git push origin "refs/tags/${TAG}"

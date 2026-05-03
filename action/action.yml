@@ -1,0 +1,108 @@
+name: humanhash
+description: Deterministic, BIP39-encoded human-readable fingerprint of a hash, digest, or UUID.
+author: Deepgram
+branding:
+  icon: hash
+  color: purple
+
+inputs:
+  hash:
+    description: |
+      Hash, digest, or UUID to fingerprint. Hex string. A leading `0x` or
+      `urn:uuid:` prefix, UUID dashes, and whitespace are tolerated.
+    required: true
+  words:
+    description: Number of words in the output (1..=5). Default 4.
+    required: false
+    default: "4"
+  separator:
+    description: Joiner between words. Default '-'.
+    required: false
+    default: "-"
+  version:
+    description: |
+      humanhash binary version to download, without leading `v`. Defaults to the
+      version this action was published with; override only if you need a
+      specific binary.
+    required: false
+    default: "0.2.0" # x-release-please-version
+
+outputs:
+  humanhash:
+    description: The deterministic word fingerprint.
+    value: ${{ steps.run.outputs.humanhash }}
+
+runs:
+  using: composite
+  steps:
+    - name: Download humanhash binary
+      id: install
+      shell: bash
+      env:
+        VERSION_INPUT: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+
+        VERSION="${VERSION_INPUT#v}"
+        if [ -z "$VERSION" ]; then
+          echo "::error::version input is empty"
+          exit 1
+        fi
+
+        case "$(uname -s)-$(uname -m)" in
+          Linux-x86_64)         TARGET='x86_64-unknown-linux-gnu';   EXT='tar.gz' ;;
+          Linux-aarch64|Linux-arm64)
+                                TARGET='aarch64-unknown-linux-gnu';  EXT='tar.gz' ;;
+          Darwin-x86_64)        TARGET='x86_64-apple-darwin';        EXT='tar.gz' ;;
+          Darwin-arm64)         TARGET='aarch64-apple-darwin';       EXT='tar.gz' ;;
+          MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64)
+                                TARGET='x86_64-pc-windows-msvc';     EXT='zip'    ;;
+          *)
+            echo "::error::unsupported runner: $(uname -s)-$(uname -m)"
+            exit 1
+            ;;
+        esac
+
+        STEM="humanhash-v${VERSION}-${TARGET}"
+        URL="https://github.com/deepgram/humanhash/releases/download/v${VERSION}/${STEM}.${EXT}"
+        DEST="${RUNNER_TEMP}/humanhash-${VERSION}"
+        mkdir -p "$DEST"
+
+        echo "Downloading $URL"
+        if [ "$EXT" = 'zip' ]; then
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+            --output "$DEST/${STEM}.zip" "$URL"
+          (cd "$DEST" && unzip -q "${STEM}.zip")
+          BIN="$DEST/${STEM}/humanhash.exe"
+        else
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 2 "$URL" \
+            | tar -xz -C "$DEST"
+          BIN="$DEST/${STEM}/humanhash"
+        fi
+
+        if [ ! -x "$BIN" ] && [ ! -f "$BIN" ]; then
+          echo "::error::humanhash binary not found at $BIN after extraction"
+          ls -la "$DEST" || true
+          exit 1
+        fi
+        chmod +x "$BIN" 2>/dev/null || true
+
+        echo "bin=$BIN" >> "$GITHUB_OUTPUT"
+
+    - name: Run humanhash
+      id: run
+      shell: bash
+      env:
+        BIN: ${{ steps.install.outputs.bin }}
+        HASH: ${{ inputs.hash }}
+        WORDS: ${{ inputs.words }}
+        SEPARATOR: ${{ inputs.separator }}
+      run: |
+        set -euo pipefail
+        out="$("$BIN" "$HASH" --words "$WORDS" --separator "$SEPARATOR")"
+        printf '%s\n' "$out"
+        {
+          printf 'humanhash<<__HUMANHASH_EOF__\n'
+          printf '%s\n' "$out"
+          printf '__HUMANHASH_EOF__\n'
+        } >> "$GITHUB_OUTPUT"

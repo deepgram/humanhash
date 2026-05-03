@@ -76,6 +76,26 @@ $ humanhash --separator " " $(git rev-parse HEAD)
 obvious dry burst debate
 ```
 
+## GitHub Action
+
+Same tool, also packaged as a composite action — useful for naming releases, tagging preview deployments, or making CI runs memorable in Slack:
+
+```yaml
+- uses: deepgram/humanhash/action@v0.2.0
+  id: hh
+  with:
+    hash: ${{ github.sha }}
+- run: echo "Build = ${{ steps.hh.outputs.humanhash }}"
+```
+
+Every release publishes the SemVer tag (`v0.2.0`) **and** an annotated git tag whose name is the humanhash of the release commit, so you can also pin like:
+
+```yaml
+uses: deepgram/humanhash/action@correct-horse-battery-staple
+```
+
+See [`action/README.md`](./action/README.md) for inputs, outputs, and examples.
+
 ## How it works
 
 1. Input is normalized (strip `0x`/`urn:uuid:` prefix, drop dashes and whitespace) and parsed as hex bytes.
