@@ -1,0 +1,23 @@
+[package]
+name = "humanhash"
+version = "0.1.0"
+edition = "2024"
+description = "Deterministic, lossless, BIP39-encoded human-readable representations of digests. Same hash always renders the same dash-separated word string."
+license = "Unlicense"
+repository = "https://github.com/deepgram/humanhash"
+homepage = "https://github.com/deepgram/humanhash"
+documentation = "https://docs.rs/humanhash"
+readme = "README.md"
+keywords = ["humanhash", "hash", "release", "bip39", "deterministic"]
+categories = ["encoding", "command-line-utilities"]
+include = ["src/**/*", "dicts/bip39.txt", "README.md", "LICENSE", "NOTICE"]
+
+[lib]
+name = "humanhash"
+path = "src/lib.rs"
+
+[[bin]]
+name = "humanhash"
+path = "src/bin/humanhash.rs"
+
+[dependencies]

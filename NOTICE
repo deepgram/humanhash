@@ -1,0 +1,20 @@
+humanhash — Deepgram
+
+This crate's code is released into the public domain (Unlicense).
+
+The English wordlist embedded at `dicts/bip39.txt` is the canonical
+BIP-0039 English wordlist:
+
+    https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt
+
+The BIP-0039 wordlist is itself in the public domain. No attribution
+is legally required, but it is included here as a courtesy to upstream
+and to make the provenance of the lexicon clear: humanhash's output
+words are drawn from a well-known, vetted source rather than a
+project-specific curation, which is intentional — the algorithm
+relies on the lexicon being long-lived and immutable.
+
+The crate's algorithm and structure are inspired by zacharyvoase's
+original humanhash project (also Unlicense / public domain):
+
+    https://github.com/zacharyvoase/humanhash
