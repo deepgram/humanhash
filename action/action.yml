@@ -25,7 +25,7 @@ inputs:
       version this action was published with; override only if you need a
       specific binary.
     required: false
-    default: "0.2.1" # x-release-please-version
+    default: "0.2.2" # x-release-please-version
 
 outputs:
   humanhash:
