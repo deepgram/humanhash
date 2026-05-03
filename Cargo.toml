@@ -2,7 +2,7 @@
 name = "humanhash"
 version = "0.1.0"
 edition = "2024"
-description = "Deterministic, lossless, BIP39-encoded human-readable representations of digests. Same hash always renders the same dash-separated word string."
+description = "Deterministic, BIP39-encoded human-readable fingerprints of digests. Same hash always renders the same short, memorable, dash-separated word string."
 license = "Unlicense"
 repository = "https://github.com/deepgram/humanhash"
 homepage = "https://github.com/deepgram/humanhash"
