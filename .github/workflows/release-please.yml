@@ -64,7 +64,7 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-latest
           - target: x86_64-apple-darwin
-            runner: macos-13
+            runner: macos-latest
           - target: aarch64-apple-darwin
             runner: macos-latest
           - target: x86_64-pc-windows-msvc
@@ -127,7 +127,7 @@ jobs:
             --clobber
 
   humanhash-tag:
-    needs: [release-please, build-binaries]
+    needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     permissions:
