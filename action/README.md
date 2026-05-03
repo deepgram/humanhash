@@ -3,7 +3,7 @@
 Deterministic, BIP39-encoded human-readable fingerprint of a hash, digest, or UUID — as a GitHub Action.
 
 ```yaml
-- uses: deepgram/humanhash/action@v0.2.0
+- uses: deepgram/humanhash/action@hero-scatter-calm-assist
   id: hh
   with:
     hash: ${{ github.sha }}
@@ -33,7 +33,7 @@ Same input always produces the same output. The action downloads a prebuilt bina
 ### Friendly name on every CI run
 
 ```yaml
-- uses: deepgram/humanhash/action@v0.2.0
+- uses: deepgram/humanhash/action@hero-scatter-calm-assist
   id: hh
   with:
     hash: ${{ github.sha }}
@@ -44,7 +44,7 @@ Same input always produces the same output. The action downloads a prebuilt bina
 ### UUID-named release artifact
 
 ```yaml
-- uses: deepgram/humanhash/action@v0.2.0
+- uses: deepgram/humanhash/action@hero-scatter-calm-assist
   id: hh
   with:
     hash: ${{ github.run_id }}-${{ github.sha }}
@@ -56,7 +56,7 @@ Same input always produces the same output. The action downloads a prebuilt bina
 ### PR comment with a memorable build name
 
 ```yaml
-- uses: deepgram/humanhash/action@v0.2.0
+- uses: deepgram/humanhash/action@hero-scatter-calm-assist
   id: hh
   with:
     hash: ${{ github.event.pull_request.head.sha }}
@@ -73,7 +73,7 @@ Same input always produces the same output. The action downloads a prebuilt bina
 Two equivalent ways to pin:
 
 ```yaml
-uses: deepgram/humanhash/action@v0.2.0                       # standard semver
+uses: deepgram/humanhash/action@v0.2.2                       # standard semver
 uses: deepgram/humanhash/action@correct-horse-battery-staple # humanhash of the release commit
 ```
 
