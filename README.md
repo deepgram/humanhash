@@ -1,84 +1,90 @@
 # humanhash
 
-Deterministic, human-readable representations of digests. Same hash always renders the same dash-separated word string. Built on the [BIP-0039 English wordlist](https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt) (2048 words, public domain).
+Deterministic, memorable fingerprints of digests. Same hash always renders the same short word string. Built on the [BIP-0039 English wordlist](https://github.com/bitcoin/bips/blob/master/bip-0039/english.txt) (2048 words, public domain).
 
 ```text
 $ humanhash ac84a4a
-prosper-cement-0a
+swim-interest-stable-neither
 
 $ humanhash 550e8400-e29b-41d4-a716-446655440000
-fence-injury-ability-share-reduce-tumble-ordinary-silk-green-pretty-abandon-00
+capable-zebra-print-curve
 
 $ humanhash $(git rev-parse HEAD)
-prosper-cement-choice-grief-million-used-cheese-caught-antenna-resist-physical-pistol-sheriff-trash-10
+obvious-dry-burst-debate
 ```
 
 ## Why
 
-Long hex digests are forgettable. Telling a coworker "the regression is on `ac84a4a0b348cbdf89c92309d6ee8fd2bc59ced0`" is harder than telling them "it's on `prosper-cement-…-trash-10`". This crate maps a digest to a deterministic, lossless, all-bit-preserving sequence of BIP39 words plus a small hex tail for any leftover bits — so the words are memorable AND the original digest is recoverable.
+Long hex digests are forgettable. Telling a coworker "the regression is on `ac84a4a0b348cbdf89c92309d6ee8fd2bc59ced0`" is harder than "it's on `swim-interest-stable-neither`". This crate maps any digest to a deterministic, short, memorable BIP39 word string — same input always renders the same output.
 
-## Supported input shapes
-
-The API takes typed input via the `HashInput` enum so the caller's intent is explicit:
-
-| variant | hex chars | bits | output shape |
-|---|---|---|---|
-| `HashInput::GitShort7` | 7 | 28 | 2 words + 2-char hex tail |
-| `HashInput::Md5` | 32 | 128 | 11 words + 2-char hex tail |
-| `HashInput::Sha1` / `HashInput::GitLong` | 40 | 160 | 14 words + 2-char hex tail |
-| `HashInput::Sha256` | 64 | 256 | 23 words + 1-char hex tail |
-| `HashInput::Uuid` | 8-4-4-4-12 | 128 | same as MD5 |
-
-`Sha1` and `GitLong` are byte-identical (both 40-hex-char SHA-1) — the two variants exist so the call site reads correctly. Same input into either produces the same output.
+This is a **fingerprint, not an encoding**. The output is lossy — the original digest is not recoverable from the words. The point is something a human can remember and read aloud, not a reversible transform.
 
 ## Library usage
 
 ```rust
-use humanhash::{humanize, HashInput};
+use humanhash::humanize;
 
-let tag = humanize(HashInput::Sha256(
-    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-))?;
-// "together-mail-awful-cradle-…-throw-5"
+let tag = humanize("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")?;
+// "obvious-dry-burst-debate"
 ```
 
-Custom separator:
+Custom word count or separator:
 
 ```rust
-use humanhash::{humanize_with, HashInput, HumanizeOptions};
+use humanhash::{humanize_with, HumanizeOptions};
 
 let tag = humanize_with(
-    HashInput::Md5("0123456789abcdef0123456789abcdef"),
-    HumanizeOptions { separator: " " },
+    "0123456789abcdef0123456789abcdef",
+    HumanizeOptions { words: 3, separator: " " },
 )?;
-// "the baffling … speck def"
+// "ramp pole believe"
 ```
 
-Raw byte API (`humanize_bytes` / `humanize_bytes_with`) is available for callers that already have parsed bytes.
+A `humanize_bytes` / `humanize_bytes_with` pair is available for callers that already have parsed bytes.
+
+### Input handling
+
+`humanize` takes any `&str` and treats it as hex. The following are stripped before parsing:
+
+- leading `0x` / `0X` prefix
+- leading `urn:uuid:` prefix
+- any `-` characters (so UUIDs work as-is)
+- any whitespace
+
+An odd number of hex characters is padded with a trailing `0` nibble. Empty input or non-hex characters return `HumanhashError`.
+
+### Word count
+
+Default is 4 words. Configurable via `HumanizeOptions::words` in the range `1..=5`. The upper bound is set by the 64-bit accumulator used for the fold (5 × 11 = 55 bits ≤ 64).
+
+| words | bits | unique fingerprints |
+|---|---|---|
+| 3 | 33 | ~8.6 billion |
+| 4 (default) | 44 | ~17.6 trillion |
+| 5 | 55 | ~36 quadrillion |
 
 ## CLI
 
-The crate ships a `humanhash` binary for shell-pipeline use.
-
 ```bash
 $ humanhash 550e8400-e29b-41d4-a716-446655440000
-fence-injury-ability-share-reduce-tumble-ordinary-silk-green-pretty-abandon-00
+capable-zebra-print-curve
 
-$ humanhash $(git rev-parse HEAD)
-prosper-cement-choice-grief-million-used-cheese-caught-antenna-resist-physical-pistol-sheriff-trash-10
+$ humanhash --words 3 ac84a4a
+interest-stable-neither
+
+$ humanhash --separator " " $(git rev-parse HEAD)
+obvious dry burst debate
 ```
-
-Auto-detects input shape from normalized hex length. Pass `--separator <s>` to change the joiner (default `-`).
 
 ## How it works
 
-1. Input is validated against the requested `HashInput` variant; non-matching shapes return `HumanhashError`.
-2. The bytes are read MSB-first as a stream of 11-bit windows.
-3. Each 11-bit window indexes the BIP39 wordlist (2048 entries = 2¹¹).
-4. Any input bits that don't fill a complete 11-bit window become a hex tail at the end (2-char tail for MD5/SHA-1, 1-char for SHA-256, etc.).
-5. Words and the hex tail are joined with the configured separator.
+1. Input is normalized (strip `0x`/`urn:uuid:` prefix, drop dashes and whitespace) and parsed as hex bytes.
+2. The bytes are folded through a 64-bit FNV-1a hash into a `u64` accumulator.
+3. The accumulator is masked to `N × 11` bits, where `N` is the configured word count (default 4).
+4. Each 11-bit window indexes the BIP39 wordlist (2048 entries = 2¹¹).
+5. The words are joined with the configured separator (default `-`).
 
-The mapping is fully deterministic and lossless — the same input always renders the same output, and (in principle) the output is decodable back to the original digest.
+FNV-1a is used as a uniform mixer so single-bit input changes avalanche into completely different fingerprints, and short inputs don't degenerate into mostly-constant output.
 
 ## License
 
@@ -86,4 +92,4 @@ The mapping is fully deterministic and lossless — the same input always render
 
 ## Inspired by
 
-- [zacharyvoase/humanhash](https://github.com/zacharyvoase/humanhash) — the original 256-word humanhash. This crate diverges on wordlist (BIP39 / 2048), lossless encoding (preserves every input bit), and typed input enum, but the spirit of "hashes that read like English" is the same.
+- [zacharyvoase/humanhash](https://github.com/zacharyvoase/humanhash) — the original 256-word humanhash. This crate diverges on wordlist (BIP39 / 2048 words instead of 256) but the spirit of "hashes that read like English" is the same.
