@@ -1,6 +1,6 @@
 [package]
 name = "humanhash"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "Deterministic, BIP39-encoded human-readable fingerprints of digests. Same hash always renders the same short, memorable, dash-separated word string."
 license = "Unlicense"

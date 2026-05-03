@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/deepgram/humanhash/compare/v0.2.0...v0.2.1) (2026-05-03)
+
+
+### Features
+
+* ship humanhash as a composite github action ([c1ff8e2](https://github.com/deepgram/humanhash/commit/c1ff8e2cee00b3d08ef590f97cac293506950131))
+* ship humanhash as a composite github action ([#3](https://github.com/deepgram/humanhash/issues/3)) ([3ee7f1c](https://github.com/deepgram/humanhash/commit/3ee7f1ca9393445e567bee57a7878cdc96c5ae03))
+
 ## [0.2.0](https://github.com/deepgram/humanhash/compare/v0.1.0...v0.2.0) (2026-05-03)
 
 
