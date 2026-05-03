@@ -81,7 +81,7 @@ obvious dry burst debate
 Same tool, also packaged as a composite action — useful for naming releases, tagging preview deployments, or making CI runs memorable in Slack:
 
 ```yaml
-- uses: deepgram/humanhash/action@v0.2.0
+- uses: deepgram/humanhash/action@hero-scatter-calm-assist
   id: hh
   with:
     hash: ${{ github.sha }}
