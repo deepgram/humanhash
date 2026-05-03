@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/deepgram/humanhash/compare/v0.2.1...v0.2.2) (2026-05-03)
+
+
+### Bug Fixes
+
+* decouple humanhash-tag from build-binaries and drop macos-13 runner ([#5](https://github.com/deepgram/humanhash/issues/5)) ([284ca01](https://github.com/deepgram/humanhash/commit/284ca0163a92a603e3c4f6d47c34aaacda7cffda))
+
 ## [0.2.1](https://github.com/deepgram/humanhash/compare/v0.2.0...v0.2.1) (2026-05-03)
 
 
